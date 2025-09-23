@@ -1,5 +1,3 @@
-# tests/test_calculator.py
-
 import unittest
 from main import add, subtract, multiply, divide
 
@@ -21,6 +19,3 @@ class TestCalculator(unittest.TestCase):
         self.assertEqual(divide(10, 2), 5)
         with self.assertRaises(ValueError):
             divide(10, 0)
-
-if __name__ == '__main__':
-    unittest.main()
