@@ -12,10 +12,6 @@ def divide(a, b):
         raise ValueError("Cannot divide by zero!")
     return a / b
 
-
-def goida(a, b):
-    return 0
-
 if __name__ == "__main__":
     print("Калькулятор")
     print("Выберите операцию: сложение, вычитание, умножение, деление")
