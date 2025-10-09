@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI/CD Pipeline for Microservices
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: dev
+          fetch-depth: 0 
 
       - name: Set Git Identity and Merge
         run: |
@@ -75,7 +75,6 @@ jobs:
             DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
             
             apt update
-
             apt install -y git || true
             
             systemctl start docker || true
@@ -85,7 +84,7 @@ jobs:
             cd $PROJECT_DIR
             
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-            
+
             if [ -d .git ]; then
               git pull
             else
@@ -94,6 +93,7 @@ jobs:
             
             export DOCKER_USERNAME
             
+            # Развертывание
             docker compose down 
             docker compose pull
             docker compose up -d
