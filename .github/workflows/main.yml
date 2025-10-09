@@ -83,13 +83,12 @@ jobs:
             }
 
             const pr = pulls[0];
-            console.log(`Found PR #${pr.number}. Checking mergeability...`);
+            console.log(`Found PR #${pr.number}. Waiting until mergeable...`);
 
-            let retries = 5;
+            let retries = 10;
             let mergeable = pr.mergeable;
 
-            while (retries > 0 && mergeable === null) {
-              console.log("Waiting for PR to become mergeable...");
+            while (retries > 0 && (mergeable === null || mergeable === false)) {
               await new Promise(r => setTimeout(r, 5000));
               const { data: updated } = await github.rest.pulls.get({
                 owner,
@@ -97,6 +96,7 @@ jobs:
                 pull_number: pr.number
               });
               mergeable = updated.mergeable;
+              console.log(`Mergeable state: ${mergeable}`);
               retries--;
             }
 
@@ -111,8 +111,6 @@ jobs:
               pull_number: pr.number,
               merge_method: 'merge'
             });
-
-            console.log("PR merged successfully!");
 
   deploy-job:
     runs-on: ubuntu-latest
