@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt || true
-          pip install pyinstaller  # 👈 для сборки .exe
+          pip install pyinstaller
 
       - name: Run unit tests
         run: |
