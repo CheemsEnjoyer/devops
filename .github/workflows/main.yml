@@ -33,10 +33,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
       - uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
           script: |
             const { data: pulls } = await github.rest.pulls.list({
               owner: context.repo.owner,
@@ -63,7 +63,7 @@ jobs:
     steps:
       - uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
           script: |
             const { data: pulls } = await github.rest.pulls.list({
               owner: context.repo.owner,
@@ -106,7 +106,7 @@ jobs:
             if [ -d .git ]; then
               git pull
             else
-              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
+              git clone https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }} .
             fi
             export DOCKER_USERNAME
             docker compose down
