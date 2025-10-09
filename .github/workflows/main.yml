@@ -83,25 +83,25 @@ jobs:
             }
 
             const pr = pulls[0];
-            console.log(`Found PR #${pr.number}. Waiting until mergeable...`);
+            console.log(`Found PR #${pr.number}. Waiting until it becomes mergeable...`);
 
-            let retries = 10;
-            let mergeable = pr.mergeable;
+            let retries = 15;
+            let mergeableState = pr.mergeable_state;
 
-            while (retries > 0 && (mergeable === null || mergeable === false)) {
-              await new Promise(r => setTimeout(r, 5000));
+            while (retries > 0 && mergeableState !== 'clean') {
+              console.log(`Current mergeable_state: ${mergeableState}`);
+              await new Promise(r => setTimeout(r, 10000));
               const { data: updated } = await github.rest.pulls.get({
                 owner,
                 repo,
                 pull_number: pr.number
               });
-              mergeable = updated.mergeable;
-              console.log(`Mergeable state: ${mergeable}`);
+              mergeableState = updated.mergeable_state;
               retries--;
             }
 
-            if (!mergeable) {
-              throw new Error("PR is not mergeable (possibly conflicts or branch protection).");
+            if (mergeableState !== 'clean') {
+              throw new Error(`PR is not mergeable (state: ${mergeableState}).`);
             }
 
             console.log("Merging PR...");
@@ -111,7 +111,7 @@ jobs:
               pull_number: pr.number,
               merge_method: 'merge'
             });
-
+            
   deploy-job:
     runs-on: ubuntu-latest
     needs: merge-pr-job
