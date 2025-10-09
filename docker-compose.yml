@@ -1,31 +1,31 @@
 version: '3.9'
 services:
   add-service:
-    image: ${{ vars.DOCKER_USERNAME }}/devops-add-service:latest
+    image: ${DOCKER_USERNAME}/devops-add-service:latest
     build: ./add-service
     ports:
       - "8001:8001"
 
   subtract-service:
-    image: ${{ vars.DOCKER_USERNAME }}/devops-subtract-service:latest
+    image: ${DOCKER_USERNAME}/devops-subtract-service:latest
     build: ./subtract-service
     ports:
       - "8002:8002"
 
   multiply-service:
-    image: ${{ vars.DOCKER_USERNAME }}/devops-multiply-service:latest
+    image: ${DOCKER_USERNAME}/devops-multiply-service:latest
     build: ./multiply-service
     ports:
       - "8003:8003"
 
   divide-service:
-    image: ${{ vars.DOCKER_USERNAME }}/devops-divide-service:latest
+    image: ${DOCKER_USERNAME}/devops-divide-service:latest
     build: ./divide-service
     ports:
       - "8004:8004"
 
   gateway:
-    image: ${{ vars.DOCKER_USERNAME }}/devops-gateway:latest
+    image: ${DOCKER_USERNAME}/devops-gateway:latest
     build: ./gateway
     ports:
       - "8080:8080"
@@ -36,7 +36,7 @@ services:
       - divide-service
 
   nginx:
-    image: nginx:latest 
+    image: nginx:latest
     ports:
       - "80:80"
     volumes:
