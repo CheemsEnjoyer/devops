@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI/CD Pipeline for Microservices
 
 on:
   push:
@@ -54,9 +54,13 @@ jobs:
             DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
             
             apt update
-            apt install -y docker.io docker-compose git
-            systemctl start docker
-            systemctl enable docker
+            
+            # Установка только Git. Игнорируем ошибки, если пакет уже установлен или конфликтует.
+            apt install -y git || true
+            
+            # Запуск Docker. Если он уже установлен (что вероятно) и не запущен, он запустится.
+            systemctl start docker || true
+            systemctl enable docker || true
             
             mkdir -p $PROJECT_DIR
             cd $PROJECT_DIR
