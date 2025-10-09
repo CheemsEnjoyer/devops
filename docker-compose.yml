@@ -1,0 +1,43 @@
+services:
+  add-service:
+    build: ./add-service
+    ports:
+      - "8001:8001"
+
+  subtract-service:
+    build: ./subtract-service
+    ports:
+      - "8002:8002"
+
+  multiply-service:
+    build: ./multiply-service
+    ports:
+      - "8003:8003"
+
+  divide-service:
+    build: ./divide-service
+    ports:
+      - "8004:8004"
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - add-service
+      - subtract-service
+      - multiply-service
+      - divide-service
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gateway
+      - add-service
+      - subtract-service
+      - multiply-service
+      - divide-service
