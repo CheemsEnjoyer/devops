@@ -1,4 +1,4 @@
-name: Microservices CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
@@ -24,19 +24,27 @@ jobs:
     needs: build-job
     if: github.ref == 'refs/heads/dev'
     steps:
-    - uses: actions/checkout@v4
+    - name: Create Pull Request and Merge
+      uses: actions/github-script@v6
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0
-    - run: |
-        git config user.name "GitHub Actions Bot"
-        git config user.email "actions@github.com"
-
-        git fetch origin main:main
-        git checkout main
-
-        git merge dev --no-ff -m "Auto-merge: dev to main"
-        git push origin main
+        script: |
+          // Create PR from dev to main
+          const pr = await github.rest.pulls.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: 'Auto-merge: dev to main',
+            head: 'dev',
+            base: 'main',
+            body: 'Automatically created by CI/CD pipeline'
+          });
+          
+          // Auto-merge the PR
+          await github.rest.pulls.merge({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.data.number,
+            merge_method: 'merge'
+          });
 
   deploy-job:
     runs-on: ubuntu-latest
@@ -54,21 +62,26 @@ jobs:
           set -e
           DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
           PROJECT_DIR="/opt/devops-project"
- 
+          
+          # System setup
           apt update && apt install -y git
           systemctl start docker && systemctl enable docker
-
+          
+          # Project directory
           mkdir -p $PROJECT_DIR
           cd $PROJECT_DIR
-
+          
+          # Docker login
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-
+          
+          # Get code
           if [ -d .git ]; then
             git pull
           else
             git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
           fi
-
+          
+          # Deploy
           export DOCKER_USERNAME
           docker compose down
           docker compose pull
