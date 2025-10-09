@@ -1,5 +1,9 @@
 name: CI/CD
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   push:
     branches: [dev, newStuff]
@@ -10,27 +14,30 @@ jobs:
   build-job:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: docker/setup-buildx-action@v3
-    - uses: docker/login-action@v3
-      with:
-        username: ${{ vars.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - run: |
-        export DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
-        docker compose build
-        docker compose push
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - run: |
+          export DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
+          docker compose build
+          docker compose push
 
   create-pr-job:
     runs-on: ubuntu-latest
     needs: build-job
     if: github.ref == 'refs/heads/dev'
     steps:
-    - name: Create Pull Request
-      uses: actions/github-script@v6
-      with:
-        script: |
-          try {
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_TOKEN }}
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
+          script: |
             const { data: pulls } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -38,7 +45,7 @@ jobs:
               head: 'dev',
               base: 'main'
             });
-            
+
             if (pulls.length === 0) {
               await github.rest.pulls.create({
                 owner: context.repo.owner,
@@ -48,45 +55,90 @@ jobs:
                 base: 'main',
                 body: 'This PR was automatically created by CI/CD pipeline after successful build.'
               });
-              console.log('Pull request created successfully');
-            } else {
-              console.log('Pull request already exists');
             }
-          } catch (error) {
-            console.error('Error creating pull request:', error);
-          }
 
+  merge-pr-job:
+    runs-on: ubuntu-latest
+    needs: create-pr-job
+    if: github.ref == 'refs/heads/dev'
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { data: pulls } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: 'dev',
+              base: 'main'
+            });
+
+            if (pulls.length === 0) {
+              console.log("No open PR found to merge.");
+              return;
+            }
+
+            const pr = pulls[0];
+            console.log(`Found PR #${pr.number}. Waiting until it becomes mergeable...`);
+
+            let retries = 15;
+            let mergeableState = pr.mergeable_state;
+
+            while (retries > 0 && mergeableState !== 'clean') {
+              console.log(`Current mergeable_state: ${mergeableState}`);
+              await new Promise(r => setTimeout(r, 10000));
+              const { data: updated } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: pr.number
+              });
+              mergeableState = updated.mergeable_state;
+              retries--;
+            }
+
+            if (mergeableState !== 'clean') {
+              throw new Error(`PR is not mergeable (state: ${mergeableState}).`);
+            }
+
+            console.log("Merging PR...");
+            await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: pr.number,
+              merge_method: 'merge'
+            });
+            
   deploy-job:
     runs-on: ubuntu-latest
+    needs: merge-pr-job
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v4
-    - uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        port: 22
-        script: |
-          set -e
-          DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
-          PROJECT_DIR="/opt/devops-project"
- 
-          apt update && apt install -y git
-          systemctl start docker && systemctl enable docker
-
-          mkdir -p $PROJECT_DIR
-          cd $PROJECT_DIR
-
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-
-          if [ -d .git ]; then
-            git pull
-          else
-            git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
-          fi
-
-          export DOCKER_USERNAME
-          docker compose down
-          docker compose pull
-          docker compose up -d
+      - uses: actions/checkout@v4
+      - uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
+            PROJECT_DIR="/opt/devops-project"
+            apt update && apt install -y git
+            systemctl start docker && systemctl enable docker
+            mkdir -p $PROJECT_DIR
+            cd $PROJECT_DIR
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
+            if [ -d .git ]; then
+              git pull
+            else
+              git clone https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }} .
+            fi
+            export DOCKER_USERNAME
+            docker compose down
+            docker compose pull
+            docker compose up -d
