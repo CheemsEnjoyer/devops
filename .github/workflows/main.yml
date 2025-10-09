@@ -1,99 +1,72 @@
-name: CI/CD Pipeline for Microservices
+name: CI/CD
 
 on:
   push:
-    branches:
-      - main
-      - dev
-      - newStuff
+    branches: [main, dev, newStuff]
 
 jobs:
-  build:
+  build-job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/login-action@v3
+      with:
+        username: ${{ vars.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - run: |
+        export DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
+        docker compose build
+        docker compose push
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push all Docker images
-        run: |
-          export DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
-          
-          docker compose build
-          docker compose push
-          
-  merge:
+  merge-job:
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/dev' 
-
+    needs: build-job
+    if: github.ref == 'refs/heads/dev'
     steps:
-      - name: Checkout repository (Target: main)
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main 
-          fetch-depth: 0 
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: main
+        fetch-depth: 0
+    - run: |
+        git config user.name "GitHub Actions Bot"
+        git config user.email "actions@github.com"
+        git merge dev --no-ff -m "Auto-merge: dev to main"
+        git push origin main
 
-      - name: Set Git Identity and Merge
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          
-          git merge dev --no-ff -m "Merge branch 'dev' into 'main' after successful CI."
-          git push origin main
-
-  deploy:
+  deploy-job:
     runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main' 
-
+    needs: build-job
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout repository for compose files
-        uses: actions/checkout@v4
-        
-      - name: Deploy and Restart Docker Compose on Server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}      
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          
-          script: |
-            set -e
-            
-            PROJECT_DIR="/opt/devops-project"
-            DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
-            
-            apt update
+    - uses: actions/checkout@v4
+    - uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          set -e
+          DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
+          PROJECT_DIR="/opt/devops-project"
 
-            apt install -y git || true
-            
-            systemctl start docker || true
-            systemctl enable docker || true
-            
-            mkdir -p $PROJECT_DIR
-            cd $PROJECT_DIR
-            
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-            
-            if [ -d .git ]; then
-              git pull
-            else
-              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
-            fi
-            
-            export DOCKER_USERNAME
-            
-            docker compose down 
-            docker compose pull
-            docker compose up -d
+          apt update && apt install -y git
+          systemctl start docker && systemctl enable docker
+
+          mkdir -p $PROJECT_DIR
+          cd $PROJECT_DIR
+
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
+          
+          if [ -d .git ]; then
+            git pull
+          else
+            git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
+          fi
+          
+          export DOCKER_USERNAME
+          docker compose down
+          docker compose pull
+          docker compose up -d
