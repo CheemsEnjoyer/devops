@@ -54,11 +54,9 @@ jobs:
             DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
             
             apt update
-            
-            # Установка только Git. Игнорируем ошибки, если пакет уже установлен или конфликтует.
+
             apt install -y git || true
             
-            # Запуск Docker. Если он уже установлен (что вероятно) и не запущен, он запустится.
             systemctl start docker || true
             systemctl enable docker || true
             
