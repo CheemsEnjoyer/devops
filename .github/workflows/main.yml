@@ -1,4 +1,4 @@
-name: ci-cd
+name: CI/CD Pipeline for Microservices
 
 on:
   push:
@@ -10,36 +10,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt || true
-          pip install pyinstaller
-
-      - name: Run unit tests
-        run: |
-          python -m unittest discover -s . -p "tests.py"
-
-      - name: Build executable (Linux)
-        run: |
-          # PyInstaller создает файл dist/main без расширения .exe
-          pyinstaller --onefile --name main main.py 
-        working-directory: .
-
-      - name: Upload executable as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-exe
-          path: dist/main # <-- ИСПРАВЛЕНИЕ: Убираем .exe
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -47,65 +23,54 @@ jobs:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build and push all Docker images
         run: |
           export DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
-          REPO_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
           
           docker compose build
-          
-          SERVICES="add-service subtract-service multiply-service divide-service gateway nginx"
-          
-          for SERVICE_NAME in $SERVICES; do
-            FULL_TAG="$DOCKER_USERNAME/$REPO_NAME-$SERVICE_NAME:latest"
-            
-            IMAGE_ID=$(docker images -q devops-$SERVICE_NAME)
-            
-            if [ -z "$IMAGE_ID" ]; then
-                echo "Warning: Image for $SERVICE_NAME not found locally. Skipping push or falling back to tagging service name."
-                if docker tag $SERVICE_NAME $FULL_TAG 2>/dev/null; then
-                    docker push $FULL_TAG
-                    echo "Successfully tagged and pushed $FULL_TAG"
-                fi
-                continue
-            fi
-            
-            docker tag $IMAGE_ID $FULL_TAG
-            docker push $FULL_TAG
-            echo "Successfully pushed $FULL_TAG"
-          done
-          
+          docker compose push
+
   deploy:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download built executable
-        uses: actions/download-artifact@v4
-        with:
-          name: app-exe
-          path: ./build-output
-
-      - name: SSH deploy executable to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "./build-output/main"
-          target: "/home/${{ secrets.SERVER_USER }}/app/main"
-
-      - name: Restart app on server
+      - name: Checkout repository for compose files
+        uses: actions/checkout@v4
+        
+      - name: Deploy and Restart Docker Compose on Server
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SERVER_HOST }}
+          host: ${{ secrets.SERVER_HOST }}      
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          
           script: |
-            pkill -f main || true
-            chmod +x ./app/main
-            nohup ./app/main > app.log 2>&1 &
+            set -e
+            
+            PROJECT_DIR="/opt/devops-project"
+            DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
+            
+            apt update
+            apt install -y docker.io docker-compose git
+            systemctl start docker
+            systemctl enable docker
+            
+            mkdir -p $PROJECT_DIR
+            cd $PROJECT_DIR
+            
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
+            
+            if [ -d .git ]; then
+              git pull
+            else
+              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
+            fi
+            
+            export DOCKER_USERNAME
+            
+            docker compose down 
+            docker compose pull
+            docker compose up -d
