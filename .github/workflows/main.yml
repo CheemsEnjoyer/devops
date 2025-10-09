@@ -1,5 +1,9 @@
 name: CI/CD
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   push:
     branches: [dev, newStuff]
@@ -26,41 +30,30 @@ jobs:
     needs: build-job
     if: github.ref == 'refs/heads/dev'
     steps:
-      - name: Checkout all branches
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Pull Request
-        uses: actions/github-script@v6
+      - uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            try {
-              const { data: pulls } = await github.rest.pulls.list({
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: 'dev',
+              base: 'main'
+            });
+            if (pulls.length === 0) {
+              await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                state: 'open',
+                title: 'Auto PR: Merge dev to main',
                 head: 'dev',
-                base: 'main'
+                base: 'main',
+                body: 'This PR was automatically created by CI/CD pipeline after successful build.'
               });
-              
-              if (pulls.length === 0) {
-                await github.rest.pulls.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: 'Auto PR: Merge dev to main',
-                  head: 'dev',
-                  base: 'main',
-                  body: 'This PR was automatically created by CI/CD pipeline after successful build.'
-                });
-                console.log('Pull request created successfully');
-              } else {
-                console.log('Pull request already exists');
-              }
-            } catch (error) {
-              console.error('Error creating pull request:', error);
-              process.exit(1);
             }
 
   merge-pr-job:
@@ -68,13 +61,7 @@ jobs:
     needs: create-pr-job
     if: github.ref == 'refs/heads/dev'
     steps:
-      - name: Checkout all branches
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Merge PR to main
-        uses: actions/github-script@v6
+      - uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -93,9 +80,6 @@ jobs:
                 pull_number: prNumber,
                 merge_method: 'merge'
               });
-              console.log(`PR #${prNumber} merged successfully`);
-            } else {
-              console.log('No PR to merge');
             }
 
   deploy-job:
