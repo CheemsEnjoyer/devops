@@ -1,5 +1,9 @@
 name: CI/CD
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   push:
     branches: [dev, newStuff]
@@ -26,45 +30,91 @@ jobs:
     needs: build-job
     if: github.ref == 'refs/heads/dev'
     steps:
-      - name: Checkout all branches
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Pull Request
-        uses: actions/github-script@v6
+          token: ${{ secrets.PERSONAL_TOKEN }}
+      - uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
           script: |
-            try {
-              const { data: pulls } = await github.rest.pulls.list({
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: 'dev',
+              base: 'main'
+            });
+
+            if (pulls.length === 0) {
+              await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                state: 'open',
+                title: 'Auto PR: Merge dev to main',
                 head: 'dev',
-                base: 'main'
+                base: 'main',
+                body: 'This PR was automatically created by CI/CD pipeline after successful build.'
               });
-              
-              if (pulls.length === 0) {
-                await github.rest.pulls.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: 'Auto PR: Merge dev to main',
-                  head: 'dev',
-                  base: 'main',
-                  body: 'This PR was automatically created by CI/CD pipeline after successful build.'
-                });
-                console.log('Pull request created successfully');
-              } else {
-                console.log('Pull request already exists');
-              }
-            } catch (error) {
-              console.error('Error creating pull request:', error);
-              process.exit(1);
             }
 
+  merge-pr-job:
+    runs-on: ubuntu-latest
+    needs: create-pr-job
+    if: github.ref == 'refs/heads/dev'
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { data: pulls } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: 'dev',
+              base: 'main'
+            });
+
+            if (pulls.length === 0) {
+              console.log("No open PR found to merge.");
+              return;
+            }
+
+            const pr = pulls[0];
+            console.log(`Found PR #${pr.number}. Waiting until it becomes mergeable...`);
+
+            let retries = 15;
+            let mergeableState = pr.mergeable_state;
+
+            while (retries > 0 && mergeableState !== 'clean') {
+              console.log(`Current mergeable_state: ${mergeableState}`);
+              await new Promise(r => setTimeout(r, 10000));
+              const { data: updated } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: pr.number
+              });
+              mergeableState = updated.mergeable_state;
+              retries--;
+            }
+
+            if (mergeableState !== 'clean') {
+              throw new Error(`PR is not mergeable (state: ${mergeableState}).`);
+            }
+
+            console.log("Merging PR...");
+            await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: pr.number,
+              merge_method: 'merge'
+            });
+            
   deploy-job:
     runs-on: ubuntu-latest
+    needs: merge-pr-job
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +136,7 @@ jobs:
             if [ -d .git ]; then
               git pull
             else
-              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
+              git clone https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }} .
             fi
             export DOCKER_USERNAME
             docker compose down
