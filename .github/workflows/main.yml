@@ -2,7 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, dev, newStuff]
+    branches: [dev, newStuff]
+  pull_request:
+    branches: [main]
 
 jobs:
   build-job:
@@ -19,36 +21,43 @@ jobs:
         docker compose build
         docker compose push
 
-  merge-job:
+  create-pr-job:
     runs-on: ubuntu-latest
     needs: build-job
     if: github.ref == 'refs/heads/dev'
     steps:
-    - name: Create Pull Request and Merge
+    - name: Create Pull Request
       uses: actions/github-script@v6
       with:
         script: |
-          // Create PR from dev to main
-          const pr = await github.rest.pulls.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: 'Auto-merge: dev to main',
-            head: 'dev',
-            base: 'main',
-            body: 'Automatically created by CI/CD pipeline'
-          });
-          
-          // Auto-merge the PR
-          await github.rest.pulls.merge({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            pull_number: pr.data.number,
-            merge_method: 'merge'
-          });
+          try {
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: 'dev',
+              base: 'main'
+            });
+            
+            if (pulls.length === 0) {
+              await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Auto PR: Merge dev to main',
+                head: 'dev',
+                base: 'main',
+                body: 'This PR was automatically created by CI/CD pipeline after successful build.'
+              });
+              console.log('Pull request created successfully');
+            } else {
+              console.log('Pull request already exists');
+            }
+          } catch (error) {
+            console.error('Error creating pull request:', error);
+          }
 
   deploy-job:
     runs-on: ubuntu-latest
-    needs: build-job
     if: github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
@@ -62,26 +71,21 @@ jobs:
           set -e
           DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
           PROJECT_DIR="/opt/devops-project"
-          
-          # System setup
+ 
           apt update && apt install -y git
           systemctl start docker && systemctl enable docker
-          
-          # Project directory
+
           mkdir -p $PROJECT_DIR
           cd $PROJECT_DIR
-          
-          # Docker login
+
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-          
-          # Get code
+
           if [ -d .git ]; then
             git pull
           else
             git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} .
           fi
-          
-          # Deploy
+
           export DOCKER_USERNAME
           docker compose down
           docker compose pull
