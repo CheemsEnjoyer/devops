@@ -56,7 +56,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           builder: ${{ steps.buildx.outputs.name }} 
-          file: docker-compose.yaml
+          compose-files: docker-compose.yaml
           tags: |
             ${{ vars.DOCKER_USERNAME }}/devops-add-service:latest
             ${{ vars.DOCKER_USERNAME }}/devops-subtract-service:latest
