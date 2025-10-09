@@ -36,10 +36,11 @@ jobs:
     if: github.ref == 'refs/heads/dev' 
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (Target: main)
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main 
           fetch-depth: 0 
 
       - name: Set Git Identity and Merge
@@ -47,7 +48,6 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           
-          git checkout main 
           git merge dev --no-ff -m "Merge branch 'dev' into 'main' after successful CI."
           git push origin main
 
@@ -75,6 +75,7 @@ jobs:
             DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
             
             apt update
+
             apt install -y git || true
             
             systemctl start docker || true
@@ -84,7 +85,7 @@ jobs:
             cd $PROJECT_DIR
             
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
-
+            
             if [ -d .git ]; then
               git pull
             else
@@ -93,7 +94,6 @@ jobs:
             
             export DOCKER_USERNAME
             
-            # Развертывание
             docker compose down 
             docker compose pull
             docker compose up -d
