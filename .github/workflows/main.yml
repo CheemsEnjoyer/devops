@@ -45,6 +45,7 @@ jobs:
               head: 'dev',
               base: 'main'
             });
+
             if (pulls.length === 0) {
               await github.rest.pulls.create({
                 owner: context.repo.owner,
@@ -65,22 +66,53 @@ jobs:
         with:
           github-token: ${{ secrets.PERSONAL_TOKEN }}
           script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
             const { data: pulls } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner,
+              repo,
               state: 'open',
               head: 'dev',
               base: 'main'
             });
-            if (pulls.length > 0) {
-              const prNumber = pulls[0].number;
-              await github.rest.pulls.merge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                merge_method: 'merge'
-              });
+
+            if (pulls.length === 0) {
+              console.log("No open PR found to merge.");
+              return;
             }
+
+            const pr = pulls[0];
+            console.log(`Found PR #${pr.number}. Checking mergeability...`);
+
+            let retries = 5;
+            let mergeable = pr.mergeable;
+
+            while (retries > 0 && mergeable === null) {
+              console.log("Waiting for PR to become mergeable...");
+              await new Promise(r => setTimeout(r, 5000));
+              const { data: updated } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: pr.number
+              });
+              mergeable = updated.mergeable;
+              retries--;
+            }
+
+            if (!mergeable) {
+              throw new Error("PR is not mergeable (possibly conflicts or branch protection).");
+            }
+
+            console.log("Merging PR...");
+            await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: pr.number,
+              merge_method: 'merge'
+            });
+
+            console.log("PR merged successfully!");
 
   deploy-job:
     runs-on: ubuntu-latest
