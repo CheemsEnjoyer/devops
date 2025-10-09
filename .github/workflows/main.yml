@@ -49,21 +49,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push all Docker images using Docker Compose
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          builder: ${{ steps.buildx.outputs.name }} 
-          compose-files: docker-compose.yaml
-          tags: |
-            ${{ vars.DOCKER_USERNAME }}/devops-add-service:latest
-            ${{ vars.DOCKER_USERNAME }}/devops-subtract-service:latest
-            ${{ vars.DOCKER_USERNAME }}/devops-multiply-service:latest
-            ${{ vars.DOCKER_USERNAME }}/devops-divide-service:latest
-            ${{ vars.DOCKER_USERNAME }}/devops-gateway:latest
-            ${{ vars.DOCKER_USERNAME }}/devops-nginx:latest
+      - name: Build and push all Docker images
+        run: |
+          REPO_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
+          DOCKER_USER=${{ vars.DOCKER_USERNAME }}
+          
+          docker compose build
+          
+          SERVICES="add-service subtract-service multiply-service divide-service gateway nginx"
+          
+          for SERVICE_NAME in $SERVICES; do
+            FULL_TAG="$DOCKER_USER/$REPO_NAME-$SERVICE_NAME:latest"
+            
+            IMAGE_ID=$(docker images -q $SERVICE_NAME)
+            
+            if [ -z "$IMAGE_ID" ]; then
+                echo "Warning: Image for $SERVICE_NAME not found locally. Skipping push."
+                continue
+            fi
+            
+            docker tag $IMAGE_ID $FULL_TAG
+            docker push $FULL_TAG
+            echo "Successfully pushed $FULL_TAG"
+          done
           
   deploy:
     runs-on: ubuntu-latest
@@ -84,7 +92,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "./build-output/main.exe"
-          target: "/home/${{ secrets.SERVER_USER }}/app/main.exe"
+          target: "/home/${{ vars.SERVER_USER }}/app/main.exe"
 
       - name: Restart app on server
         uses: appleboy/ssh-action@v1.6.0
