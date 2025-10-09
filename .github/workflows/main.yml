@@ -55,10 +55,15 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          # Использует docker-compose.yaml для определения всех образов и их путей
-          # Предполагается, что в docker-compose.yaml есть секции 'build' для каждого сервиса
           builder: ${{ steps.buildx.outputs.name }} 
           file: docker-compose.yaml
+          tags: |
+            ${{ vars.DOCKER_USERNAME }}/devops-add-service:latest
+            ${{ vars.DOCKER_USERNAME }}/devops-subtract-service:latest
+            ${{ vars.DOCKER_USERNAME }}/devops-multiply-service:latest
+            ${{ vars.DOCKER_USERNAME }}/devops-divide-service:latest
+            ${{ vars.DOCKER_USERNAME }}/devops-gateway:latest
+            ${{ vars.DOCKER_USERNAME }}/devops-nginx:latest
           
   deploy:
     runs-on: ubuntu-latest
