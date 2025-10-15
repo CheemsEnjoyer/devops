@@ -1,31 +1,31 @@
 version: '3.9'
 services:
   add-service:
-    image: ${DOCKER_USERNAME}/devops-add-service:latest
+    image: cheemsenjoyer/devops-add-service:latest
     build: ./add-service
     ports:
       - "8001:8001"
 
   subtract-service:
-    image: ${DOCKER_USERNAME}/devops-subtract-service:latest
+    image: cheemsenjoyer/devops-subtract-service:latest
     build: ./subtract-service
     ports:
       - "8002:8002"
 
   multiply-service:
-    image: ${DOCKER_USERNAME}/devops-multiply-service:latest
+    image: cheemsenjoyer/devops-multiply-service:latest
     build: ./multiply-service
     ports:
       - "8003:8003"
 
   divide-service:
-    image: ${DOCKER_USERNAME}/devops-divide-service:latest
+    image: cheemsenjoyer/devops-divide-service:latest
     build: ./divide-service
     ports:
       - "8004:8004"
 
   gateway:
-    image: ${DOCKER_USERNAME}/devops-gateway:latest
+    image: cheemsenjoyer/devops-gateway:latest
     build: ./gateway
     ports:
       - "8088:8080"

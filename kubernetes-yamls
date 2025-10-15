@@ -1,0 +1,344 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: add-service
+  name: add-service
+spec:
+  ports:
+    - name: "8001"
+      port: 8001
+      targetPort: 8001
+  selector:
+    io.kompose.service: add-service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: divide-service
+  name: divide-service
+spec:
+  ports:
+    - name: "8004"
+      port: 8004
+      targetPort: 8004
+  selector:
+    io.kompose.service: divide-service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: gateway
+  name: gateway
+spec:
+  ports:
+    - name: "8088"
+      port: 8088
+      targetPort: 8080
+  selector:
+    io.kompose.service: gateway
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: multiply-service
+  name: multiply-service
+spec:
+  ports:
+    - name: "8003"
+      port: 8003
+      targetPort: 8003
+  selector:
+    io.kompose.service: multiply-service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: nginx
+  name: nginx
+spec:
+  ports:
+    - name: "8000"
+      port: 8000
+      targetPort: 80
+  selector:
+    io.kompose.service: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: subtract-service
+  name: subtract-service
+spec:
+  ports:
+    - name: "8002"
+      port: 8002
+      targetPort: 8002
+  selector:
+    io.kompose.service: subtract-service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: add-service
+  name: add-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: add-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: add-service
+    spec:
+      containers:
+        - image: /devops-add-service:latest
+          name: add-service
+          ports:
+            - containerPort: 8001
+              protocol: TCP
+      restartPolicy: Always
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: divide-service
+  name: divide-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: divide-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: divide-service
+    spec:
+      containers:
+        - image: /devops-divide-service:latest
+          name: divide-service
+          ports:
+            - containerPort: 8004
+              protocol: TCP
+      restartPolicy: Always
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: gateway
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: gateway
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: gateway
+    spec:
+      containers:
+        - image: /devops-gateway:latest
+          name: gateway
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      restartPolicy: Always
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: multiply-service
+  name: multiply-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: multiply-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: multiply-service
+    spec:
+      containers:
+        - image: /devops-multiply-service:latest
+          name: multiply-service
+          ports:
+            - containerPort: 8003
+              protocol: TCP
+      restartPolicy: Always
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: nginx
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: nginx
+    spec:
+      containers:
+        - image: nginx:latest
+          name: nginx
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              name: nginx-cm0
+              readOnly: true
+              subPath: nginx.conf
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+            name: nginx-cm0
+          name: nginx-cm0
+
+---
+apiVersion: v1
+data:
+  nginx.conf: |-
+    worker_processes 1;
+
+    events { worker_connections 1024; }
+
+    http {
+        upstream gateway-backend {
+            server gateway:8080;
+        }
+
+        server {
+            listen 80;
+
+            client_max_body_size 10M;
+            proxy_read_timeout 90;
+            proxy_connect_timeout 90;
+
+            location / {
+                proxy_pass http://gateway-backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_redirect off;
+            }
+        }
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+    use-subpath: "true"
+  labels:
+    io.kompose.service: nginx
+  name: nginx-cm0
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: subtract-service
+  name: subtract-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: subtract-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --out kubernetes-yamls
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: subtract-service
+    spec:
+      containers:
+        - image: /devops-subtract-service:latest
+          name: subtract-service
+          ports:
+            - containerPort: 8002
+              protocol: TCP
+      restartPolicy: Always
+
