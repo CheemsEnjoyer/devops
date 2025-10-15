@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml
+    kompose.version: 1.37.0 (fb0539e64)
+  labels:
+    io.kompose.service: multiply-service
+  name: multiply-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: multiply-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml
+        kompose.version: 1.37.0 (fb0539e64)
+      labels:
+        io.kompose.service: multiply-service
+    spec:
+      containers:
+        - image: cheemsenjoyer/devops-multiply-service:latest
+          name: multiply-service
+          ports:
+            - containerPort: 8003
+              protocol: TCP
+      restartPolicy: Always
