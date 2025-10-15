@@ -52,17 +52,27 @@ jobs:
             set -e
             DOCKER_USERNAME="${{ vars.DOCKER_USERNAME }}"
             PROJECT_DIR="/opt/devops-project"
-            apt update && apt install -y git
-            systemctl start docker && systemctl enable docker
+
+            apt update && apt install -y git || true
+
+            systemctl start docker || true
+            systemctl enable docker || true
+            
             mkdir -p $PROJECT_DIR
             cd $PROJECT_DIR
+            
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKER_USERNAME --password-stdin
+            
             if [ -d .git ]; then
+              git reset --hard HEAD
+              git clean -f -d
               git pull
             else
               git clone https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }} .
             fi
+            
             export DOCKER_USERNAME
+
             docker compose down
             docker compose pull
             docker compose up -d
