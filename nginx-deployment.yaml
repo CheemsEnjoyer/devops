@@ -19,13 +19,16 @@ spec:
       annotations:
         kompose.cmd: kompose convert -f docker-compose.yml
         kompose.version: 1.37.0 (fb0539e64)
+        kubectl.kubernetes.io/restartedAt: '2025-10-15T13:30:00Z'
       labels:
         io.kompose.service: nginx
     spec:
       containers:
-        - image: nginx:latest
+        # >>> ИЗМЕНЕНИЕ ОБРАЗА <<<
+        - image: nginxinc/nginx-unprivileged:latest
           name: nginx
           ports:
+            # На новом образе Nginx Unprivileged слушает 8080
             - containerPort: 8080
               protocol: TCP
           volumeMounts:

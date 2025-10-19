@@ -6,10 +6,10 @@ metadata:
     kompose.version: 1.37.0 (fb0539e64)
   labels:
     io.kompose.service: gateway
-  name: gateway
+  name: gateway-service
 spec:
   ports:
-    - name: "8088"
+    - name: 'http-gateway'
       port: 8088
       targetPort: 8080
   selector:
