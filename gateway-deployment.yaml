@@ -26,4 +26,19 @@ spec:
           ports:
             - containerPort: 8080
               protocol: TCP
+          env:
+            - name: ADD_SERVICE_HOST
+              value: "add-service"
+            - name: ADD_SERVICE_PORT
+              value: "8001"
+            - name: DIVIDE_SERVICE_HOST
+              value: "divide-service"
+            - name: DIVIDE_SERVICE_PORT
+              value: "8004"
+            - name: MULTIPLY_SERVICE_HOST
+              value: "multiply-service"
+              value: "8003"
+            - name: SUBTRACT_SERVICE_HOST
+              value: "subtract-service"
+              value: "8002"
       restartPolicy: Always
